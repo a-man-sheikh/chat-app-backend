@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>WebSocket Chat Tester</title>
+  <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
+</head>
+<body>
+  <h2>Socket.IO Chat Test</h2>
+
+  <div>
+    <label>User ID:</label>
+    <input type="text" id="userId" placeholder="Enter your userId" />
+    <br />
+    <label>User Name:</label>
+    <input type="text" id="userName" placeholder="Enter your name" />
+    <br />
+    <button onclick="connectSocket()">Connect</button>
+  </div>
+
+  <hr>
+
+  <div id="chatArea" style="display: none;">
+    <p><strong>Status:</strong> <span id="status">Disconnected</span></p>
+
+    <label>Receiver ID:</label>
+    <input type="text" id="receiverId" placeholder="Receiver userId" />
+    <br />
+    <label>Message:</label>
+    <input type="text" id="message" placeholder="Type a message" />
+    <button onclick="sendMessage()">Send</button>
+
+    <hr>
+    <div>
+      <h3>Messages</h3>
+      <ul id="messages"></ul>
+    </div>
+  </div>
+
+  <script>
+    let socket = null;
+
+    function connectSocket() {
+      const userId = document.getElementById("userId").value;
+      const userName = document.getElementById("userName").value;
+
+      if (!userId || !userName) {
+        alert("Please enter userId and userName");
+        return;
+      }
+
+      socket = io("http://localhost:5000", {
+        auth: {
+          userId,
+          userName
+        }
+      });
+
+      socket.on("connect", () => {
+        document.getElementById("status").innerText = "Connected";
+        document.getElementById("chatArea").style.display = "block";
+        console.log("Connected with ID:", socket.id);
+      });
+
+      socket.on("disconnect", () => {
+        document.getElementById("status").innerText = "Disconnected";
+        console.log("Disconnected");
+      });
+
+      socket.on("message", (data) => {
+        const msgList = document.getElementById("messages");
+        const li = document.createElement("li");
+        li.textContent = `[From ${data.data.sender.name}]: ${data.data.content}`;
+        msgList.appendChild(li);
+      });
+
+      socket.on("message_sent", (data) => {
+        const msgList = document.getElementById("messages");
+        const li = document.createElement("li");
+        li.textContent = `[Sent]: ${data.data.content}`;
+        msgList.appendChild(li);
+      });
+
+      socket.on("message_error", (err) => {
+        console.error("Message error:", err);
+        alert("Error sending message: " + err.message);
+      });
+    }
+
+    function sendMessage() {
+      const receiver = document.getElementById("receiverId").value;
+      const content = document.getElementById("message").value;
+
+      if (!receiver || !content) {
+        alert("Please enter both receiver and message");
+        return;
+      }
+
+      socket.emit("send_message", {
+        receiver,
+        content,
+        messageType: "text"
+      });
+
+      document.getElementById("message").value = "";
+    }
+  </script>
+</body>
+</html>

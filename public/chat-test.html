@@ -1,0 +1,284 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Real-Time Chat Test</title>
+    <script src="https://cdn.socket.io/4.8.1/socket.io.min.js"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        .chat-container {
+            border: 1px solid #ccc;
+            border-radius: 8px;
+            padding: 20px;
+            margin: 20px 0;
+        }
+        .message {
+            background: #f0f0f0;
+            padding: 10px;
+            margin: 5px 0;
+            border-radius: 5px;
+        }
+        .message.sent {
+            background: #d4edda;
+            text-align: right;
+        }
+        .message.received {
+            background: #f8d7da;
+        }
+        .status {
+            padding: 10px;
+            margin: 10px 0;
+            border-radius: 5px;
+        }
+        .status.online {
+            background: #d4edda;
+            color: #155724;
+        }
+        .status.offline {
+            background: #f8d7da;
+            color: #721c24;
+        }
+        .status.typing {
+            background: #fff3cd;
+            color: #856404;
+        }
+        input, button {
+            padding: 10px;
+            margin: 5px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+        }
+        button {
+            background: #007bff;
+            color: white;
+            cursor: pointer;
+        }
+        button:hover {
+            background: #0056b3;
+        }
+        .user-info {
+            background: #e9ecef;
+            padding: 15px;
+            border-radius: 5px;
+            margin-bottom: 20px;
+        }
+    </style>
+</head>
+<body>
+    <h1>Real-Time Chat Test</h1>
+    
+    <div class="user-info">
+        <h3>User Configuration</h3>
+        <input type="text" id="userId" placeholder="Enter User ID" value="">
+        <input type="text" id="userName" placeholder="Enter User Name" value="">
+        <button onclick="connectUser()">Connect User</button>
+        <button onclick="disconnectUser()">Disconnect</button>
+        <div id="connectionStatus" class="status offline">Disconnected</div>
+    </div>
+
+    <div class="chat-container">
+        <h3>Chat Messages</h3>
+        <div id="messages"></div>
+        <div id="typingStatus" class="status" style="display: none;">Someone is typing...</div>
+        <div style="margin-top: 20px;">
+            <input type="text" id="receiverId" placeholder="Receiver ID" value="">
+            <input type="text" id="messageInput" placeholder="Type your message..." value="">
+            <button onclick="sendMessage()">Send Message</button>
+            <button onclick="startTyping()">Start Typing</button>
+            <button onclick="stopTyping()">Stop Typing</button>
+        </div>
+    </div>
+
+    <div class="chat-container">
+        <h3>Event Log</h3>
+        <div id="eventLog" style="height: 200px; overflow-y: scroll; background: #f8f9fa; padding: 10px; border-radius: 5px;"></div>
+        <button onclick="clearLog()">Clear Log</button>
+    </div>
+
+    <script>
+        let socket;
+        let currentUserId;
+        let currentUserName;
+
+        function logEvent(event, data) {
+            const log = document.getElementById('eventLog');
+            const timestamp = new Date().toLocaleTimeString();
+            log.innerHTML += `<div>[${timestamp}] ${event}: ${JSON.stringify(data)}</div>`;
+            log.scrollTop = log.scrollHeight;
+        }
+
+        function clearLog() {
+            document.getElementById('eventLog').innerHTML = '';
+        }
+
+        function connectUser() {
+            const userId = document.getElementById('userId').value;
+            const userName = document.getElementById('userName').value;
+            
+            if (!userId || !userName) {
+                alert('Please enter both User ID and User Name');
+                return;
+            }
+
+            currentUserId = userId;
+            currentUserName = userName;
+
+            // Connect to WebSocket server
+            socket = io('http://localhost:5000', {
+                auth: {
+                    userId: userId,
+                    userName: userName
+                }
+            });
+
+            // Connection events
+            socket.on('connect', () => {
+                logEvent('Connected', { userId, userName });
+                document.getElementById('connectionStatus').textContent = 'Connected';
+                document.getElementById('connectionStatus').className = 'status online';
+            });
+
+            socket.on('disconnect', () => {
+                logEvent('Disconnected', {});
+                document.getElementById('connectionStatus').textContent = 'Disconnected';
+                document.getElementById('connectionStatus').className = 'status offline';
+            });
+
+            // Message events
+            socket.on('message', (data) => {
+                logEvent('Message Received', data);
+                addMessage(data, 'received');
+            });
+
+            socket.on('message_sent', (data) => {
+                logEvent('Message Sent Confirmation', data);
+                addMessage(data, 'sent');
+            });
+
+            // Typing events
+            socket.on('typing_start', (data) => {
+                logEvent('Typing Started', data);
+                document.getElementById('typingStatus').textContent = `${data.userName} is typing...`;
+                document.getElementById('typingStatus').style.display = 'block';
+            });
+
+            socket.on('typing_stop', (data) => {
+                logEvent('Typing Stopped', data);
+                document.getElementById('typingStatus').style.display = 'none';
+            });
+
+            // Online/offline events
+            socket.on('user_online', (data) => {
+                logEvent('User Online', data);
+            });
+
+            socket.on('user_offline', (data) => {
+                logEvent('User Offline', data);
+            });
+
+            // Read receipt events
+            socket.on('message_read', (data) => {
+                logEvent('Message Read', data);
+            });
+
+            // Error events
+            socket.on('error', (data) => {
+                logEvent('Error', data);
+            });
+        }
+
+        function disconnectUser() {
+            if (socket) {
+                socket.disconnect();
+                currentUserId = null;
+                currentUserName = null;
+            }
+        }
+
+        function sendMessage() {
+            if (!socket || !currentUserId) {
+                alert('Please connect a user first');
+                return;
+            }
+
+            const receiverId = document.getElementById('receiverId').value;
+            const messageText = document.getElementById('messageInput').value;
+
+            if (!receiverId || !messageText) {
+                alert('Please enter both receiver ID and message');
+                return;
+            }
+
+            const messageData = {
+                receiver: receiverId,
+                content: messageText,
+                messageType: 'text'
+            };
+
+            socket.emit('send_message', messageData);
+            logEvent('Sending Message', messageData);
+            document.getElementById('messageInput').value = '';
+        }
+
+        function startTyping() {
+            if (!socket || !currentUserId) {
+                alert('Please connect a user first');
+                return;
+            }
+
+            const receiverId = document.getElementById('receiverId').value;
+            if (!receiverId) {
+                alert('Please enter receiver ID');
+                return;
+            }
+
+            socket.emit('typing_start', { receiver: receiverId });
+        }
+
+        function stopTyping() {
+            if (!socket || !currentUserId) {
+                alert('Please connect a user first');
+                return;
+            }
+
+            const receiverId = document.getElementById('receiverId').value;
+            if (!receiverId) {
+                alert('Please enter receiver ID');
+                return;
+            }
+
+            socket.emit('typing_stop', { receiver: receiverId });
+        }
+
+        function addMessage(data, type) {
+            const messagesDiv = document.getElementById('messages');
+            const messageDiv = document.createElement('div');
+            messageDiv.className = `message ${type}`;
+            
+            const sender = type === 'sent' ? 'You' : data.sender?.name || 'Unknown';
+            const timestamp = new Date().toLocaleTimeString();
+            
+            messageDiv.innerHTML = `
+                <strong>${sender}</strong> (${timestamp})<br>
+                ${data.content}
+            `;
+            
+            messagesDiv.appendChild(messageDiv);
+            messagesDiv.scrollTop = messagesDiv.scrollHeight;
+        }
+
+        // Auto-fill user IDs for testing
+        window.addEventListener('load', () => {
+            // You can set default values here for testing
+            // document.getElementById('userId').value = 'user1_id_here';
+            // document.getElementById('userName').value = 'John Doe';
+        });
+    </script>
+</body>
+</html> 
