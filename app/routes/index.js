@@ -3,6 +3,7 @@ const router = express.Router();
 
 const userAuthRoutes = require("./userAuthRoutes");
 const messageRoutes = require("./messageRoutes");
+const groupRoutes = require("./groupRoutes");
 
 // Health check endpoint
 router.get("/", (req, res) => {
@@ -15,6 +16,7 @@ router.get("/", (req, res) => {
       endpoints: {
         auth: "/api/user",
         messages: "/api/message",
+        groups: "/api/group",
         websocket: "ws://localhost:5000",
       },
     },
@@ -23,5 +25,6 @@ router.get("/", (req, res) => {
 
 router.use("/user", userAuthRoutes);
 router.use("/message", messageRoutes);
+router.use("/group", groupRoutes);
 
 module.exports = router;

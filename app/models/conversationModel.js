@@ -1,4 +1,5 @@
 const mongoose = require("mongoose");
+const { generateEncryptionKey } = require("../utils/encryption");
 
 const conversationSchema = new mongoose.Schema(
   {
@@ -79,11 +80,16 @@ conversationSchema.statics.getOrCreate = async function (
   let conversation = await this.findOne({ conversationId });
 
   if (!conversation) {
+    // Create new conversation with encryption key
     conversation = new this({
       participants: participantIds,
-      encryptionKey,
+      encryptionKey: encryptionKey || generateEncryptionKey(),
       conversationId,
     });
+    await conversation.save();
+  } else if (!conversation.encryptionKey) {
+    // Fix existing conversation that doesn't have encryption key
+    conversation.encryptionKey = encryptionKey || generateEncryptionKey();
     await conversation.save();
   }
 

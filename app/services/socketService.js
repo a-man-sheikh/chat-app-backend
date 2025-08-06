@@ -3,7 +3,8 @@ const jwt = require("jsonwebtoken");
 const User = require("../models/userModel");
 const Message = require("../models/messageModel");
 const Conversation = require("../models/conversationModel");
-const { encryptMessage, decryptMessage } = require("../utils/encryption");
+const Group = require("../models/groupModel");
+const { encryptMessage, decryptMessage, generateEncryptionKey } = require("../utils/encryption");
 
 class SocketService {
   constructor() {
@@ -29,25 +30,11 @@ class SocketService {
     // Authentication middleware
     this.io.use(async (socket, next) => {
       try {
-        // For Postman WebSocket testing, accept userId and userName directly
-        if (socket.handshake.auth.userId && socket.handshake.auth.userName) {
-          const user = await User.findById(socket.handshake.auth.userId);
-          if (!user) {
-            return next(new Error("Authentication error: User not found"));
-          }
-          socket.userId = user._id.toString();
-          socket.user = user;
-          return next();
-        }
-
-        // For JWT token authentication (production)
-        const token =
-          socket.handshake.auth.token || socket.handshake.headers.authorization;
+        const token = socket.handshake.auth.token;
+        const userId = socket.handshake.auth.userId;
 
         if (!token) {
-          return next(
-            new Error("Authentication error: Token or userId required")
-          );
+          return next(new Error("Authentication error: Token required"));
         }
 
         // Verify JWT token
@@ -55,7 +42,10 @@ class SocketService {
           token,
           process.env.JWT_SECRET || "your-secret-key"
         );
-        const user = await User.findById(decoded.userId);
+        
+        // Use userId from token if not provided in auth
+        const actualUserId = userId || decoded.userId;
+        const user = await User.findById(actualUserId);
 
         if (!user) {
           return next(new Error("Authentication error: User not found"));
@@ -65,6 +55,7 @@ class SocketService {
         socket.user = user;
         next();
       } catch (error) {
+        console.error('Socket authentication error:', error);
         next(new Error("Authentication error: " + error.message));
       }
     });
@@ -95,7 +86,7 @@ class SocketService {
           // Get or create conversation
           const conversation = await Conversation.getOrCreate(
             [socket.userId, receiver],
-            null // Will be generated if new conversation
+            generateEncryptionKey() // Generate encryption key for new conversation
           );
 
           // Get encryption key for conversation
@@ -237,6 +228,116 @@ class SocketService {
           userName: socket.user.name,
           isOnline,
         });
+      });
+
+      // Handle group message sending
+      socket.on("send_group_message", async (data) => {
+        try {
+          const {
+            groupId,
+            content,
+            messageType = "text",
+            mediaUrl,
+            replyTo,
+          } = data;
+
+          console.log('Socket: Sending group message:', { groupId, senderId: socket.userId, content });
+
+          // First get the group with encryption key
+          const group = await Group.findById(groupId).select("+encryptionKey");
+          if (!group || !group.isActive) {
+            console.log('Socket: Group not found or inactive:', groupId);
+            throw new Error("Group not found or inactive");
+          }
+
+          // Then get the populated group for membership check
+          const populatedGroup = await Group.findById(groupId)
+            .populate([
+              { path: "admin", select: "_id name email" },
+              { path: "participants.user", select: "_id name email" },
+            ]);
+
+          if (!populatedGroup) {
+            console.log('Socket: Populated group not found:', groupId);
+            throw new Error("Group not found");
+          }
+
+          // Check if user is participant using populated group
+          const isParticipant = populatedGroup.isParticipant(socket.userId);
+          console.log('Socket: Is user participant:', isParticipant, 'for userId:', socket.userId);
+          
+          if (!isParticipant) {
+            console.log('Socket: User is not a participant of this group');
+            throw new Error("You are not a member of this group");
+          }
+
+          // Encrypt message content using the group with encryption key
+          const encryptedContent = encryptMessage(content, group.encryptionKey);
+
+          // Create message
+          const message = new Message({
+            sender: socket.userId,
+            group: groupId,
+            content: content,
+            encryptedContent: encryptedContent,
+            messageType,
+            mediaUrl,
+            replyTo,
+            groupId: groupId,
+            messageScope: "group",
+          });
+
+          await message.save();
+          console.log('Socket: Message saved:', message._id);
+
+          // Populate sender details
+          await message.populate([
+            { path: "sender", select: "_id name email" },
+            { path: "replyTo", select: "content sender" },
+          ]);
+
+          // Update group's last message
+          group.lastMessage = message._id;
+          group.lastMessageAt = new Date();
+          await group.save();
+
+          // Emit to sender
+          socket.emit("group_message_sent", {
+            success: true,
+            message: "Group message sent successfully",
+            data: message,
+          });
+
+          // Emit to all group participants using populated group
+          const participants = populatedGroup.participants
+            .filter((p) => p.isActive)
+            .map((p) => {
+              const participantUserId = p.user._id || p.user;
+              return participantUserId.toString();
+            });
+
+          console.log('Socket: Sending to participants:', participants);
+
+          participants.forEach((participantId) => {
+            if (participantId !== socket.userId.toString()) {
+              const participantSocket = this.connectedUsers.get(participantId);
+              if (participantSocket) {
+                participantSocket.emit("group_message", {
+                  success: true,
+                  message: "New group message received",
+                  data: message,
+                });
+              }
+            }
+          });
+        } catch (error) {
+          console.error("Error sending group message:", error);
+          socket.emit("group_message_error", {
+            success: false,
+            message: "Failed to send group message",
+            error: error.message,
+          });
+        }
       });
 
       // Handle disconnect

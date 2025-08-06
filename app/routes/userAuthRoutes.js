@@ -1,13 +1,27 @@
-const { register, login } = require("../controllers/userAuthController");
-const {
-  registerSchema,
-  loginSchema,
-} = require("../validations/userValidation");
-const validate = require("../middleware/validate");
 const express = require("express");
 const router = express.Router();
+const { authenticateToken } = require("../middleware/authMiddleware");
+const {
+  register,
+  login,
+  refreshToken,
+  logout,
+  logoutAllDevices,
+  findUser,
+  getAllUsers,
+  getUserById,
+} = require("../controllers/userAuthController");
 
-router.post("/register", validate(registerSchema), register);
-router.post("/login", validate(loginSchema), login);
+// Public routes
+router.post("/register", register);
+router.post("/login", login);
+router.post("/refresh-token", refreshToken);
+router.post("/logout", logout);
+
+// Protected routes
+router.post("/logout-all-devices", authenticateToken, logoutAllDevices);
+router.get("/users", authenticateToken, getAllUsers);
+router.get("/users/:userId", authenticateToken, getUserById);
+router.get("/find/:email", authenticateToken, findUser);
 
 module.exports = router;

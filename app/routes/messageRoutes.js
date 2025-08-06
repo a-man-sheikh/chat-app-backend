@@ -1,68 +1,37 @@
-const {
-  sendMessage,
-  getMessages,
-  markAsRead,
-  deleteMessage,
-  getConversations,
-  getUnreadCount,
-} = require("../controllers/messageController");
-const {
-  sendMessageSchema,
-  getMessagesSchema,
-  markAsReadSchema,
-  deleteMessageSchema,
-  getConversationsSchema,
-} = require("../validations/messageValidation");
-const validate = require("../middleware/validate");
 const express = require("express");
 const router = express.Router();
+const { authenticateToken } = require("../middleware/authMiddleware");
+const validate = require("../middleware/validate");
+const {
+  sendMessageSchema,
+  markMessageAsReadSchema,
+  deleteMessageSchema,
+  markAllMessagesAsReadSchema,
+  searchMessagesSchema,
+  paginationSchema,
+  conversationMessagesSchema
+} = require("../validations/messageValidation");
+const {
+  getConversations,
+  getConversationMessages,
+  sendMessage,
+  markMessageAsRead,
+  deleteMessage,
+  getUnreadCount,
+  searchMessages,
+  markAllMessagesAsRead,
+  getMessageStats
+} = require("../controllers/messageController");
 
-// Note: These routes will need authentication middleware
-// For now, we'll create a temporary auth middleware for testing
+// Message routes with validation
+router.get("/conversations", authenticateToken, validate(paginationSchema, "query"), getConversations);
+router.get("/conversation", authenticateToken, validate(conversationMessagesSchema, "query"), getConversationMessages);
+router.post("/send", authenticateToken, validate(sendMessageSchema), sendMessage);
+router.put("/read", authenticateToken, validate(markMessageAsReadSchema), markMessageAsRead);
+router.delete("/delete", authenticateToken, validate(deleteMessageSchema), deleteMessage);
+router.get("/unread-count", authenticateToken, getUnreadCount);
+router.get("/search", authenticateToken, validate(searchMessagesSchema, "query"), searchMessages);
+router.put("/mark-all-read", authenticateToken, validate(markAllMessagesAsReadSchema), markAllMessagesAsRead);
+router.get("/stats", authenticateToken, getMessageStats);
 
-// Temporary auth middleware for testing (replace with real JWT auth later)
-const tempAuthMiddleware = (req, res, next) => {
-  // For testing, we'll use a user ID from query params
-  // In production, this should come from JWT token
-  const userId = req.query.userId || req.body.userId;
-  if (!userId) {
-    return res.status(401).json({
-      success: false,
-      message: "User ID required for testing",
-    });
-  }
-
-  // Mock user object
-  req.user = { _id: userId };
-  next();
-};
-
-// Message routes
-router.post(
-  "/send",
-  tempAuthMiddleware,
-  validate(sendMessageSchema),
-  sendMessage
-);
-router.get(
-  "/conversation",
-  tempAuthMiddleware,
-  validate(getMessagesSchema),
-  getMessages
-);
-router.put("/read", tempAuthMiddleware, validate(markAsReadSchema), markAsRead);
-router.delete(
-  "/delete",
-  tempAuthMiddleware,
-  validate(deleteMessageSchema),
-  deleteMessage
-);
-router.get(
-  "/conversations",
-  tempAuthMiddleware,
-  validate(getConversationsSchema),
-  getConversations
-);
-router.get("/unread-count", tempAuthMiddleware, getUnreadCount);
-
-module.exports = router;
+module.exports = router; 

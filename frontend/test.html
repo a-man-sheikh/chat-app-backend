@@ -1,0 +1,274 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Chat App Test</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+            background-color: #f5f5f5;
+        }
+        .test-container {
+            max-width: 800px;
+            margin: 0 auto;
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        .test-section {
+            margin-bottom: 20px;
+            padding: 15px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+        }
+        .test-button {
+            background: #007bff;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        .test-button:hover {
+            background: #0056b3;
+        }
+        .log {
+            background: #f8f9fa;
+            border: 1px solid #dee2e6;
+            padding: 10px;
+            border-radius: 5px;
+            max-height: 200px;
+            overflow-y: auto;
+            font-family: monospace;
+            font-size: 12px;
+        }
+    </style>
+</head>
+<body>
+    <div class="test-container">
+        <h1>Chat App Test</h1>
+        
+        <div class="test-section">
+            <h3>Authentication Test</h3>
+            <button class="test-button" onclick="testAuth()">Test Authentication</button>
+            <button class="test-button" onclick="testLogin()">Test Login</button>
+            <button class="test-button" onclick="testRegister()">Test Register</button>
+        </div>
+
+        <div class="test-section">
+            <h3>Chat Test</h3>
+            <button class="test-button" onclick="testLoadConversations()">Test Load Conversations</button>
+            <button class="test-button" onclick="testLoadUsers()">Test Load Users</button>
+            <button class="test-button" onclick="testSendMessage()">Test Send Message</button>
+        </div>
+
+        <div class="test-section">
+            <h3>Groups Test</h3>
+            <button class="test-button" onclick="testLoadGroups()">Test Load Groups</button>
+            <button class="test-button" onclick="testCreateGroup()">Test Create Group</button>
+            <button class="test-button" onclick="testSendGroupMessage()">Test Send Group Message</button>
+        </div>
+
+        <div class="test-section">
+            <h3>Console Log</h3>
+            <div id="log" class="log"></div>
+            <button class="test-button" onclick="clearLog()">Clear Log</button>
+        </div>
+    </div>
+
+    <script>
+        // Override console.log to capture logs
+        const originalLog = console.log;
+        const originalError = console.error;
+        
+        function log(message, type = 'log') {
+            const logDiv = document.getElementById('log');
+            const timestamp = new Date().toLocaleTimeString();
+            const logEntry = document.createElement('div');
+            logEntry.style.color = type === 'error' ? 'red' : 'black';
+            logEntry.textContent = `[${timestamp}] ${message}`;
+            logDiv.appendChild(logEntry);
+            logDiv.scrollTop = logDiv.scrollHeight;
+        }
+
+        console.log = function(...args) {
+            log(args.join(' '));
+            originalLog.apply(console, args);
+        };
+
+        console.error = function(...args) {
+            log(args.join(' '), 'error');
+            originalError.apply(console, args);
+        };
+
+        function clearLog() {
+            document.getElementById('log').innerHTML = '';
+        }
+
+        // Test functions
+        async function testAuth() {
+            try {
+                const response = await fetch('http://localhost:5000/api/user/all', {
+                    headers: {
+                        'Authorization': 'Bearer test-token'
+                    }
+                });
+                const data = await response.json();
+                console.log('Auth test response:', data);
+            } catch (error) {
+                console.error('Auth test error:', error);
+            }
+        }
+
+        async function testLogin() {
+            try {
+                const response = await fetch('http://localhost:5000/api/user/login', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        email: 'test@example.com',
+                        password: 'password123'
+                    })
+                });
+                const data = await response.json();
+                console.log('Login test response:', data);
+            } catch (error) {
+                console.error('Login test error:', error);
+            }
+        }
+
+        async function testRegister() {
+            try {
+                const response = await fetch('http://localhost:5000/api/user/register', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        name: 'Test User',
+                        email: 'test@example.com',
+                        password: 'password123'
+                    })
+                });
+                const data = await response.json();
+                console.log('Register test response:', data);
+            } catch (error) {
+                console.error('Register test error:', error);
+            }
+        }
+
+        async function testLoadConversations() {
+            try {
+                const response = await fetch('http://localhost:5000/api/message/conversations', {
+                    headers: {
+                        'Authorization': 'Bearer test-token'
+                    }
+                });
+                const data = await response.json();
+                console.log('Load conversations test response:', data);
+            } catch (error) {
+                console.error('Load conversations test error:', error);
+            }
+        }
+
+        async function testLoadUsers() {
+            try {
+                const response = await fetch('http://localhost:5000/api/user/all', {
+                    headers: {
+                        'Authorization': 'Bearer test-token'
+                    }
+                });
+                const data = await response.json();
+                console.log('Load users test response:', data);
+            } catch (error) {
+                console.error('Load users test error:', error);
+            }
+        }
+
+        async function testSendMessage() {
+            try {
+                const response = await fetch('http://localhost:5000/api/message/send', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': 'Bearer test-token'
+                    },
+                    body: JSON.stringify({
+                        receiver: 'test-user-id',
+                        content: 'Test message'
+                    })
+                });
+                const data = await response.json();
+                console.log('Send message test response:', data);
+            } catch (error) {
+                console.error('Send message test error:', error);
+            }
+        }
+
+        async function testLoadGroups() {
+            try {
+                const response = await fetch('http://localhost:5000/api/group/user/groups', {
+                    headers: {
+                        'Authorization': 'Bearer test-token'
+                    }
+                });
+                const data = await response.json();
+                console.log('Load groups test response:', data);
+            } catch (error) {
+                console.error('Load groups test error:', error);
+            }
+        }
+
+        async function testCreateGroup() {
+            try {
+                const response = await fetch('http://localhost:5000/api/group/create', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': 'Bearer test-token'
+                    },
+                    body: JSON.stringify({
+                        name: 'Test Group',
+                        description: 'Test group description',
+                        participants: ['user1', 'user2']
+                    })
+                });
+                const data = await response.json();
+                console.log('Create group test response:', data);
+            } catch (error) {
+                console.error('Create group test error:', error);
+            }
+        }
+
+        async function testSendGroupMessage() {
+            try {
+                const response = await fetch('http://localhost:5000/api/group/message/send', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': 'Bearer test-token'
+                    },
+                    body: JSON.stringify({
+                        groupId: 'test-group-id',
+                        content: 'Test group message'
+                    })
+                });
+                const data = await response.json();
+                console.log('Send group message test response:', data);
+            } catch (error) {
+                console.error('Send group message test error:', error);
+            }
+        }
+
+        // Log when page loads
+        console.log('Chat App Test Page Loaded');
+        console.log('Server should be running on http://localhost:5000');
+    </script>
+</body>
+</html> 

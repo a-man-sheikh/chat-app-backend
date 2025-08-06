@@ -10,7 +10,10 @@ const messageSchema = new mongoose.Schema(
     receiver: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "User",
-      required: true,
+    },
+    group: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Group",
     },
     content: {
       type: String,
@@ -52,7 +55,14 @@ const messageSchema = new mongoose.Schema(
     },
     conversationId: {
       type: String,
-      required: true,
+    },
+    groupId: {
+      type: String,
+    },
+    messageScope: {
+      type: String,
+      enum: ["private", "group"],
+      default: "private",
     },
   },
   {
@@ -67,6 +77,10 @@ messageSchema.index({ receiver: 1, isRead: 1 });
 // Virtual for conversation ID (unique identifier for a chat between two users)
 // Note: We're using a real field instead of virtual since conversationId is stored in DB
 messageSchema.virtual("conversationKey").get(function () {
+  // For group messages, receiver might be undefined
+  if (!this.receiver) {
+    return this.conversationId || null;
+  }
   const users = [this.sender.toString(), this.receiver.toString()].sort();
   return users.join("_");
 });

@@ -1,0 +1,210 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Chat App</title>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <link href="styles.css" rel="stylesheet">
+</head>
+<body>
+    <div id="app">
+        <!-- Navigation -->
+        <nav class="navbar">
+            <div class="nav-brand">
+                <i class="fas fa-comments"></i>
+                <span>Chat App</span>
+            </div>
+            <div class="nav-menu" id="navMenu">
+                <a href="#" class="nav-link" data-page="login" id="loginLink">Login</a>
+                <a href="#" class="nav-link" data-page="register" id="registerLink">Register</a>
+                <a href="#" class="nav-link" data-page="chat" id="chatLink" style="display: none;">Chat</a>
+                <a href="#" class="nav-link" data-page="groups" id="groupsLink" style="display: none;">Groups</a>
+                <button class="nav-link logout-btn" id="logoutBtn" style="display: none;">Logout</button>
+                <div class="websocket-status" id="websocketStatus" style="display: none;">
+                    <i class="fas fa-circle" id="wsStatusIcon"></i>
+                    <span id="wsStatusText">Connecting...</span>
+                </div>
+            </div>
+        </nav>
+
+        <!-- Login Page -->
+        <div id="loginPage" class="page">
+            <div class="auth-container">
+                <div class="auth-card">
+                    <h2><i class="fas fa-sign-in-alt"></i> Login</h2>
+                    <form id="loginForm">
+                        <div class="form-group">
+                            <label for="loginEmail">Email</label>
+                            <input type="email" id="loginEmail" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="loginPassword">Password</label>
+                            <input type="password" id="loginPassword" required>
+                        </div>
+                        <button type="submit" class="btn btn-primary">Login</button>
+                    </form>
+                    <p class="auth-switch">Don't have an account? <a href="#" id="showRegister">Register</a></p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Register Page -->
+        <div id="registerPage" class="page" style="display: none;">
+            <div class="auth-container">
+                <div class="auth-card">
+                    <h2><i class="fas fa-user-plus"></i> Register</h2>
+                    <form id="registerForm">
+                        <div class="form-group">
+                            <label for="registerName">Name</label>
+                            <input type="text" id="registerName" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="registerEmail">Email</label>
+                            <input type="email" id="registerEmail" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="registerPassword">Password</label>
+                            <input type="password" id="registerPassword" required>
+                        </div>
+                        <button type="submit" class="btn btn-primary">Register</button>
+                    </form>
+                    <p class="auth-switch">Already have an account? <a href="#" id="showLogin">Login</a></p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Chat Page -->
+        <div id="chatPage" class="page" style="display: none;">
+            <div class="chat-container">
+                <!-- Sidebar -->
+                <div class="chat-sidebar">
+                    <div class="sidebar-header">
+                        <h3>Conversations</h3>
+                        <button class="btn btn-sm" id="newChatBtn">
+                            <i class="fas fa-plus"></i>
+                        </button>
+                    </div>
+                    <div class="conversations-list" id="conversationsList">
+                        <!-- Conversations will be loaded here -->
+                    </div>
+                </div>
+
+                <!-- Chat Area -->
+                <div class="chat-main">
+                    <div class="chat-header" id="chatHeader">
+                        <div class="chat-info">
+                            <h3 id="currentChatName">Select a conversation</h3>
+                            <p id="currentChatStatus">Choose someone to start chatting</p>
+                        </div>
+                    </div>
+                    
+                    <div class="chat-messages" id="chatMessages">
+                        <div class="welcome-message">
+                            <i class="fas fa-comments"></i>
+                            <h3>Welcome to Chat App</h3>
+                            <p>Select a conversation from the sidebar to start chatting</p>
+                        </div>
+                    </div>
+
+                    <div class="chat-input-container" id="chatInputContainer" style="display: none;">
+                        <form id="messageForm">
+                            <div class="input-group">
+                                <input type="text" id="messageInput" placeholder="Type your message..." disabled>
+                                <button type="submit" class="btn btn-primary" disabled>
+                                    <i class="fas fa-paper-plane"></i>
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Groups Page -->
+        <div id="groupsPage" class="page" style="display: none;">
+            <div class="groups-container">
+                <div class="groups-header">
+                    <h2><i class="fas fa-users"></i> Groups</h2>
+                    <button class="btn btn-primary" id="createGroupBtn">
+                        <i class="fas fa-plus"></i> Create Group
+                    </button>
+                </div>
+                
+                <div class="groups-list" id="groupsList">
+                    <!-- Groups will be loaded here -->
+                </div>
+            </div>
+        </div>
+
+        <!-- Create Group Modal -->
+        <div id="createGroupModal" class="modal">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h3>Create New Group</h3>
+                    <span class="close">&times;</span>
+                </div>
+                <form id="createGroupForm">
+                    <div class="form-group">
+                        <label for="groupName">Group Name</label>
+                        <input type="text" id="groupName" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="groupDescription">Description</label>
+                        <textarea id="groupDescription" rows="3"></textarea>
+                    </div>
+                    <div class="form-group">
+                        <label for="groupParticipants">Add Participants</label>
+                        <div class="participants-list" id="participantsList">
+                            <!-- Available users will be loaded here -->
+                        </div>
+                        <div class="selected-participants" id="selectedParticipants">
+                            <!-- Selected participants will be shown here -->
+                        </div>
+                    </div>
+                    <div class="modal-actions">
+                        <button type="button" class="btn btn-secondary" id="cancelCreateGroup">Cancel</button>
+                        <button type="submit" class="btn btn-primary">Create Group</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <!-- New Chat Modal -->
+        <div id="newChatModal" class="modal">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h3>Start New Chat</h3>
+                    <span class="close">&times;</span>
+                </div>
+                <div class="modal-body">
+                    <div class="form-group">
+                        <label>Select a user to start chatting</label>
+                        <div class="users-list" id="usersList">
+                            <!-- Users will be loaded here -->
+                        </div>
+                    </div>
+                    <div class="modal-actions">
+                        <button type="button" class="btn btn-secondary" id="cancelNewChat">Cancel</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Loading Spinner -->
+        <div id="loadingSpinner" class="loading-spinner" style="display: none;">
+            <div class="spinner"></div>
+        </div>
+
+        <!-- Toast Notifications -->
+        <div id="toastContainer" class="toast-container"></div>
+    </div>
+
+    <script src="https://cdn.socket.io/4.8.1/socket.io.min.js"></script>
+    <script src="js/socket.js"></script>
+    <script src="js/auth.js"></script>
+    <script src="js/chat.js"></script>
+    <script src="js/groups.js"></script>
+    <script src="js/app.js"></script>
+</body>
+</html> 

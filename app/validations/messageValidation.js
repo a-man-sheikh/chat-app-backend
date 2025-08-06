@@ -1,92 +1,109 @@
 const Joi = require("joi");
 
-// Send message validation schema
+// Validation for sending a message
 const sendMessageSchema = Joi.object({
   receiver: Joi.string().required().messages({
     "string.empty": "Receiver ID is required",
-    "any.required": "Receiver ID is required",
+    "any.required": "Receiver ID is required"
   }),
-
-  content: Joi.string().min(1).max(1000).required().messages({
+  content: Joi.string().trim().min(1).max(1000).required().messages({
     "string.empty": "Message content is required",
-    "string.min": "Message cannot be empty",
-    "string.max": "Message cannot exceed 1000 characters",
-    "any.required": "Message content is required",
+    "string.min": "Message content must be at least 1 character long",
+    "string.max": "Message content cannot exceed 1000 characters",
+    "any.required": "Message content is required"
   }),
-
-  messageType: Joi.string()
-    .valid("text", "image", "file", "audio")
-    .default("text")
-    .messages({
-      "any.only": "Message type must be text, image, file, or audio",
-    }),
-
-  mediaUrl: Joi.string().uri().optional().messages({
-    "string.uri": "Media URL must be a valid URL",
+  messageType: Joi.string().valid("text", "image", "file", "audio").default("text").messages({
+    "any.only": "Message type must be one of: text, image, file, audio"
   }),
-
-  replyTo: Joi.string().optional().messages({
-    "string.empty": "Reply message ID must be valid",
-  }),
+  mediaUrl: Joi.string().uri().optional().allow(null, "").messages({
+    "string.uri": "Media URL must be a valid URL"
+  })
 });
 
-// Get messages validation schema
-const getMessagesSchema = Joi.object({
+// Validation for marking message as read
+const markMessageAsReadSchema = Joi.object({
+  messageId: Joi.string().required().messages({
+    "string.empty": "Message ID is required",
+    "any.required": "Message ID is required"
+  })
+});
+
+// Validation for deleting a message
+const deleteMessageSchema = Joi.object({
+  messageId: Joi.string().required().messages({
+    "string.empty": "Message ID is required",
+    "any.required": "Message ID is required"
+  })
+});
+
+// Validation for marking all messages as read
+const markAllMessagesAsReadSchema = Joi.object({
   receiver: Joi.string().required().messages({
     "string.empty": "Receiver ID is required",
-    "any.required": "Receiver ID is required",
-  }),
+    "any.required": "Receiver ID is required"
+  })
+});
 
+// Validation for search query
+const searchMessagesSchema = Joi.object({
+  q: Joi.string().trim().min(1).required().messages({
+    "string.empty": "Search query is required",
+    "string.min": "Search query must be at least 1 character long",
+    "any.required": "Search query is required"
+  }),
   page: Joi.number().integer().min(1).default(1).messages({
     "number.base": "Page must be a number",
     "number.integer": "Page must be an integer",
-    "number.min": "Page must be at least 1",
+    "number.min": "Page must be at least 1"
   }),
-
   limit: Joi.number().integer().min(1).max(100).default(20).messages({
     "number.base": "Limit must be a number",
     "number.integer": "Limit must be an integer",
     "number.min": "Limit must be at least 1",
-    "number.max": "Limit cannot exceed 100",
-  }),
+    "number.max": "Limit cannot exceed 100"
+  })
 });
 
-// Mark message as read validation schema
-const markAsReadSchema = Joi.object({
-  messageId: Joi.string().required().messages({
-    "string.empty": "Message ID is required",
-    "any.required": "Message ID is required",
-  }),
-});
-
-// Delete message validation schema
-const deleteMessageSchema = Joi.object({
-  messageId: Joi.string().required().messages({
-    "string.empty": "Message ID is required",
-    "any.required": "Message ID is required",
-  }),
-});
-
-// Get conversations validation schema
-const getConversationsSchema = Joi.object({
+// Validation for pagination parameters
+const paginationSchema = Joi.object({
   page: Joi.number().integer().min(1).default(1).messages({
     "number.base": "Page must be a number",
     "number.integer": "Page must be an integer",
-    "number.min": "Page must be at least 1",
+    "number.min": "Page must be at least 1"
   }),
-
-  limit: Joi.number().integer().min(1).max(50).default(20).messages({
+  limit: Joi.number().integer().min(1).max(100).default(20).messages({
     "number.base": "Limit must be a number",
     "number.integer": "Limit must be an integer",
     "number.min": "Limit must be at least 1",
-    "number.max": "Limit cannot exceed 50",
+    "number.max": "Limit cannot exceed 100"
+  })
+});
+
+// Validation for conversation messages
+const conversationMessagesSchema = Joi.object({
+  receiver: Joi.string().required().messages({
+    "string.empty": "Receiver ID is required",
+    "any.required": "Receiver ID is required"
   }),
+  page: Joi.number().integer().min(1).default(1).messages({
+    "number.base": "Page must be a number",
+    "number.integer": "Page must be an integer",
+    "number.min": "Page must be at least 1"
+  }),
+  limit: Joi.number().integer().min(1).max(100).default(50).messages({
+    "number.base": "Limit must be a number",
+    "number.integer": "Limit must be an integer",
+    "number.min": "Limit must be at least 1",
+    "number.max": "Limit cannot exceed 100"
+  })
 });
 
 module.exports = {
   sendMessageSchema,
-  getMessagesSchema,
-  markAsReadSchema,
+  markMessageAsReadSchema,
   deleteMessageSchema,
-  getConversationsSchema,
-};
+  markAllMessagesAsReadSchema,
+  searchMessagesSchema,
+  paginationSchema,
+  conversationMessagesSchema
+}; 
